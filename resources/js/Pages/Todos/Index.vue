@@ -15,9 +15,12 @@ import { usePage } from "@inertiajs/vue3";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { reactive } from "vue";
 import TodoModal from "@/Components/TodoModal.vue";
-import { useMessage } from "naive-ui";
+import { useMessage, useDialog } from "naive-ui";
+
+defineOptions({ layout: AuthenticatedLayout });
 
 const message = useMessage();
+const dialog = useDialog();
 
 // Modal state
 const modal = reactive({
@@ -38,6 +41,32 @@ function openEditModal(todo) {
 function closeModal() {
     modal.show = false;
     modal.todo = null;
+}
+
+function deleteTodo(todo) {
+    const params = new URLSearchParams();
+    if (props.todos.current_page && props.todos.current_page !== 1) {
+        params.set("page", props.todos.current_page);
+    }
+    if (props.filters.search) {
+        params.set("search", props.filters.search);
+    }
+    const queryString = params.toString();
+    const url = `/todos/${todo.id}` + (queryString ? `?${queryString}` : "");
+
+    dialog.warning({
+        title: "Delete Todo",
+        content: `Are you sure you want to delete "${todo.text}"?`,
+        positiveText: "Delete",
+        negativeText: "Cancel",
+        onPositiveClick: () => {
+            router.delete(url, {
+                preserveScroll: true,
+                onSuccess: () => message.success("Todo deleted."),
+                onError: () => message.error("Failed to delete todo."),
+            });
+        },
+    });
 }
 
 // Props from Laravel
@@ -126,7 +155,7 @@ const columns = computed(() => {
         key: "actions",
         width: 150,
         align: "center",
-        render() {
+        render(row) {
             return h(
                 NSpace,
                 { justify: "center" },
@@ -134,12 +163,21 @@ const columns = computed(() => {
                     default: () => [
                         h(
                             NButton,
-                            { size: "small", quaternary: true },
+                            {
+                                size: "small",
+                                quaternary: true,
+                                onClick: () => openEditModal(row), // ← adds click
+                            },
                             { default: () => "Edit" },
                         ),
                         h(
                             NButton,
-                            { size: "small", quaternary: true, type: "error" },
+                            {
+                                size: "small",
+                                quaternary: true,
+                                type: "error",
+                                onClick: () => deleteTodo(row), // ← adds click
+                            },
                             { default: () => "Delete" },
                         ),
                     ],
@@ -150,43 +188,60 @@ const columns = computed(() => {
 
     return cols;
 });
+
+watch(
+    () => props.filters.search,
+    (newSearch) => {
+        search.value = newSearch || "";
+    },
+);
 </script>
 
 <template>
     <Head title="Dashboard" />
 
-    <AuthenticatedLayout>
-        <div class="p-8">
-            <h1 class="text-2xl font-bold mb-4">Todos</h1>
+    <!-- <AuthenticatedLayout> -->
+    <div class="p-8">
+        <h1 class="text-2xl font-bold mb-4">Todos</h1>
 
-            <!-- Search bar -->
-            <div class="mb-4 flex gap-2 items-center">
-                <NInput
-                    v-model:value="search"
-                    placeholder="Search todos..."
-                    clearable
-                    style="max-width: 300px"
-                />
-            </div>
-
-            <!-- Naive UI Data Table -->
-            <NDataTable
-                :columns="columns"
-                :data="todos.data"
-                :row-key="(row) => row.id"
-                :bordered="true"
-                :single-line="false"
+        <!-- Search bar -->
+        <div class="mb-4 flex gap-2 items-center">
+            <NInput
+                v-model:value="search"
+                placeholder="Search todos..."
+                clearable
+                style="max-width: 300px"
             />
-
-            <!-- Server-side Pagination -->
-            <div class="mt-4 flex justify-end">
-                <NPagination
-                    :page="todos.current_page"
-                    :page-size="todos.per_page"
-                    :item-count="todos.total"
-                    @update:page="handlePageChange"
-                />
-            </div>
+            <NButton type="primary" @click="openCreateModal">
+                New Todo
+            </NButton>
         </div>
-    </AuthenticatedLayout>
+
+        <!-- Naive UI Data Table -->
+        <NDataTable
+            :columns="columns"
+            :data="todos.data"
+            :row-key="(row) => row.id"
+            :bordered="true"
+            :single-line="false"
+        />
+
+        <!-- Server-side Pagination -->
+        <div class="mt-4 flex justify-end">
+            <NPagination
+                :page="todos.current_page"
+                :page-size="todos.per_page"
+                :item-count="todos.total"
+                @update:page="handlePageChange"
+            />
+        </div>
+        <TodoModal
+            :show="modal.show"
+            :todo="modal.todo"
+            :current-page="todos.current_page"
+            :filters="filters"
+            @close="closeModal"
+        />
+    </div>
+    <!-- </AuthenticatedLayout> -->
 </template>

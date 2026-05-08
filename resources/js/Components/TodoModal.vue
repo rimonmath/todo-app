@@ -13,8 +13,16 @@ import {
 } from "naive-ui";
 
 const props = defineProps({
-    show: Boolean, // controls visibility
-    todo: Object, // null for create, existing todo object for edit
+    show: Boolean,
+    todo: Object,
+    currentPage: {
+        type: Number,
+        default: 1,
+    },
+    filters: {
+        type: Object,
+        default: () => ({}),
+    },
 });
 
 const emit = defineEmits(["close"]);
@@ -29,12 +37,13 @@ const form = ref({
 
 // When the todo prop changes (edit mode), fill the form
 watch(
-    () => props.todo,
-    (newTodo) => {
-        if (newTodo) {
+    () => props.show,
+    (newShow) => {
+        if (!newShow) return; // only act when opening
+        if (props.todo) {
             form.value = {
-                text: newTodo.text || "",
-                is_completed: !!newTodo.is_completed,
+                text: props.todo.text || "",
+                is_completed: !!props.todo.is_completed,
             };
         } else {
             form.value = { text: "", is_completed: false };
@@ -57,7 +66,18 @@ function submit() {
     }
 
     const method = props.todo ? "put" : "post";
-    const url = props.todo ? `/todos/${props.todo.id}` : "/todos";
+    const baseUrl = props.todo ? `/todos/${props.todo.id}` : "/todos";
+
+    // Preserve current page and search as query params
+    const params = new URLSearchParams();
+    if (props.currentPage && props.currentPage !== 1) {
+        params.set("page", props.currentPage);
+    }
+    if (props.filters.search) {
+        params.set("search", props.filters.search);
+    }
+    const queryString = params.toString();
+    const url = queryString ? `${baseUrl}?${queryString}` : baseUrl;
 
     const inertiaForm = useForm(form.value);
 
