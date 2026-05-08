@@ -13,6 +13,32 @@ import {
 import { CheckmarkDoneOutline, CloseOutline } from "@vicons/ionicons5";
 import { usePage } from "@inertiajs/vue3";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
+import { reactive } from "vue";
+import TodoModal from "@/Components/TodoModal.vue";
+import { useMessage } from "naive-ui";
+
+const message = useMessage();
+
+// Modal state
+const modal = reactive({
+    show: false,
+    todo: null, // null = create mode, object = edit mode
+});
+
+function openCreateModal() {
+    modal.todo = null;
+    modal.show = true;
+}
+
+function openEditModal(todo) {
+    modal.todo = { ...todo };
+    modal.show = true;
+}
+
+function closeModal() {
+    modal.show = false;
+    modal.todo = null;
+}
 
 // Props from Laravel
 const props = defineProps({
