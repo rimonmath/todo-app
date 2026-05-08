@@ -44,7 +44,8 @@ class TodoController extends Controller
         Auth::user()->todos()->create($validated);
 
         return redirect()
-            ->route('todos.index')
+            ->route('todos.index', ['search' => $request->query('search'),
+                'page' => $request->query('page'), ])
             ->with('success', 'Todo created.');
     }
 
@@ -63,11 +64,12 @@ class TodoController extends Controller
         $todo->update($validated);
 
         return redirect()
-            ->route('todos.index')
+            ->route('todos.index', ['search' => $request->query('search'),
+                'page' => $request->query('page'), ])
             ->with('success', 'Todo updated.');
     }
 
-    public function destroy(Todo $todo): RedirectResponse
+    public function destroy(Request $request, Todo $todo): RedirectResponse
     {
         if (! Auth::user()->isAdmin() && $todo->user_id !== Auth::id()) {
             abort(403);
@@ -76,7 +78,8 @@ class TodoController extends Controller
         $todo->delete();
 
         return redirect()
-            ->route('todos.index')
+            ->route('todos.index', ['search' => $request->query('search'),
+                'page' => $request->query('page'), ])
             ->with('success', 'Todo deleted.');
     }
 }
